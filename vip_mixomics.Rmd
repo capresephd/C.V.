@@ -1,0 +1,436 @@
+---
+title: "vip_mixomics"
+author: "Christian Yoo"
+date: "2023-03-10"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Initializing Libraries
+```{r}
+# Reads excel files directly
+library(readxl)
+# PLS-DA with this
+library(mixOmics)
+library(tidyverse)
+library(tidymodels)
+# Data wrangling
+library(dplyr)
+# Normalize data with this
+library(NormalyzerDE)
+# median imputation
+library(missMethods)
+library(reshape2)
+```
+# Setting Seed
+```{r}
+set.seed(69)
+```
+
+# Loading Data
+```{r}
+CE_excel <- read_excel("lipidomics_species_concentrations.xlsx", sheet = "CE")
+CER_excel <- read_excel("lipidomics_species_concentrations.xlsx", sheet = "CER")
+DAG_excel <- read_excel("lipidomics_species_concentrations.xlsx", sheet = "DAG")
+DCER_excel <- read_excel("lipidomics_species_concentrations.xlsx", sheet = "DCER")
+FFA_excel <- read_excel("lipidomics_species_concentrations.xlsx", sheet = "FFA")
+HCER_excel <- read_excel("lipidomics_species_concentrations.xlsx", sheet = "HCER")
+LCER_excel <- read_excel("lipidomics_species_concentrations.xlsx", sheet = "LCER")
+LPC_excel <- read_excel("lipidomics_species_concentrations.xlsx", sheet = "LPC")
+LPE_excel <- read_excel("lipidomics_species_concentrations.xlsx", sheet = "LPE")
+MAG_excel <- read_excel("lipidomics_species_concentrations.xlsx", sheet = "MAG")
+PC_excel <- read_excel("lipidomics_species_concentrations.xlsx", sheet = "PC")
+PE_excel <- read_excel("lipidomics_species_concentrations.xlsx", sheet = "PE")
+PI_excel <- read_excel("lipidomics_species_concentrations.xlsx", sheet = "PI")
+SM_excel <- read_excel("lipidomics_species_concentrations.xlsx", sheet = "SM")
+TAG_excel <- read_excel("lipidomics_species_concentrations.xlsx", sheet = "TAG")
+```
+# Assigning Groups
+```{r}
+Y <- gl(2, 40, labels = c("BL", "AI"))
+# X <- data.matrix
+```
+```{r}
+#Checking distributions of Y
+summary(Y)
+```
+# Formatting Data
+```{r}
+X_CE <- CE_species <- as.matrix(subset(CE_excel, select = -c(ID, group, gender_group)))
+## Remove columns with more than 50% NA
+X_CE <- X_CE[, which(colMeans(!is.na(X_CE)) > 0.7)]
+X_CE <- as_tibble(X_CE)
+# Replace with minimum value in range of DF
+selected_columns <- c(1:(ncol(X_CE)))
+X_CE[selected_columns] <- lapply(X_CE[selected_columns], 
+                                  function(x) 
+                                    replace(x,is.na(x), min(x, na.rm = T)
+                                            ))
+X_CER <- CER_species <- as.matrix(subset(CER_excel, select = -c(ID, group, gender_group)))
+X_CER <- X_CER[, which(colMeans(!is.na(X_CER)) > 0.7)]
+X_CER <- as_tibble(X_CER)
+# Replace with minimum value in range of DF
+selected_columns <- c(1:(ncol(X_CER)))
+X_CER[selected_columns] <- lapply(X_CER[selected_columns], 
+                                  function(x) 
+                                    replace(x,is.na(x), min(x, na.rm = T)
+                                            ))
+X_DAG <- DAG_species <- as.matrix(subset(DAG_excel, select = -c(ID, group, gender_group)))
+X_DAG <- X_DAG[, which(colMeans(!is.na(X_DAG)) > 0.7)]
+X_DAG <- as_tibble(X_DAG)
+# Replace with minimum value in range of DF
+selected_columns <- c(1:(ncol(X_DAG)))
+X_DAG[selected_columns] <- lapply(X_DAG[selected_columns], 
+                                  function(x) 
+                                    replace(x,is.na(x), min(x, na.rm = T)
+                                            ))
+X_DCER <- DCER_species <- as.matrix(subset(DCER_excel, select = -c(ID, group, gender_group)))
+X_DCER <- X_DCER[, which(colMeans(!is.na(X_DCER)) > 0.7)]
+X_DCER <- as_tibble(X_DCER)
+# Replace with minimum value in range of DF
+selected_columns <- c(1:(ncol(X_DCER)))
+X_DCER[selected_columns] <- lapply(X_DCER[selected_columns], 
+                                  function(x) 
+                                    replace(x,is.na(x), min(x, na.rm = T)
+                                            ))
+X_FFA <- FFA_species <- as.matrix(subset(FFA_excel, select = -c(ID, group, gender_group)))
+X_FFA <- X_FFA[, which(colMeans(!is.na(X_FFA)) > 0.7)]
+X_FFA <- as_tibble(X_FFA)
+# Replace with minimum value in range of DF
+selected_columns <- c(1:(ncol(X_FFA)))
+X_FFA[selected_columns] <- lapply(X_FFA[selected_columns], 
+                                  function(x) 
+                                    replace(x,is.na(x), min(x, na.rm = T)
+                                            ))
+X_HCER <- HCER_species <- as.matrix(subset(HCER_excel, select = -c(ID, group, gender_group)))
+X_HCER <- X_HCER[, which(colMeans(!is.na(X_HCER)) > 0.7)]
+X_HCER <- as_tibble(X_HCER)
+# Replace with minimum value in range of DF
+selected_columns <- c(1:(ncol(X_HCER)))
+X_HCER[selected_columns] <- lapply(X_HCER[selected_columns], 
+                                  function(x) 
+                                    replace(x,is.na(x), min(x, na.rm = T)
+                                            ))
+X_LCER <- LCER_species <- as.matrix(subset(LCER_excel, select = -c(ID, group, gender_group)))
+X_LCER <- X_LCER[, which(colMeans(!is.na(X_LCER)) > 0.7)]
+X_LCER <- as_tibble(X_LCER)
+# Replace with minimum value in range of DF
+selected_columns <- c(1:(ncol(X_LCER)))
+X_LCER[selected_columns] <- lapply(X_LCER[selected_columns], 
+                                  function(x) 
+                                    replace(x,is.na(x), min(x, na.rm = T)
+                                            ))
+X_LPC <- LPC_species <- as.matrix(subset(LPC_excel, select = -c(ID, group, gender_group)))
+X_LPC <- X_LPC[, which(colMeans(!is.na(X_LPC)) > 0.7)]
+X_LPC <- as_tibble(X_LPC)
+# Replace with minimum value in range of DF
+selected_columns <- c(1:(ncol(X_LPC)))
+X_LPC[selected_columns] <- lapply(X_LPC[selected_columns], 
+                                  function(x) 
+                                    replace(x,is.na(x), min(x, na.rm = T)
+                                            ))
+X_LPE <- LPE_species <- as.matrix(subset(LPE_excel, select = -c(ID, group, gender_group)))
+X_LPE <- X_LPE[, which(colMeans(!is.na(X_LPE)) > 0.7)]
+X_LPE <- as_tibble(X_LPE)
+# Replace with minimum value in range of DF
+selected_columns <- c(1:(ncol(X_LPE)))
+X_LPE[selected_columns] <- lapply(X_LPE[selected_columns], 
+                                  function(x) 
+                                    replace(x,is.na(x), min(x, na.rm = T)
+                                            ))
+X_MAG <- MAG_species <- as.matrix(subset(MAG_excel, select = -c(ID, group, gender_group)))
+X_MAG <- X_MAG[, which(colMeans(!is.na(X_MAG)) > 0.7)]
+X_MAG <- as_tibble(X_MAG)
+# Replace with minimum value in range of DF
+selected_columns <- c(1:(ncol(X_MAG)))
+X_MAG[selected_columns] <- lapply(X_MAG[selected_columns], 
+                                  function(x) 
+                                    replace(x,is.na(x), min(x, na.rm = T)
+                                            ))
+X_PC <- PC_species <- as.matrix(subset(PC_excel, select = -c(ID, group, gender_group)))
+X_PC <- X_PC[, which(colMeans(!is.na(X_PC)) > 0.7)]
+X_PC <- as_tibble(X_PC)
+# Replace with minimum value in range of DF
+selected_columns <- c(1:(ncol(X_PC)))
+X_PC[selected_columns] <- lapply(X_PC[selected_columns], 
+                                  function(x) 
+                                    replace(x,is.na(x), min(x, na.rm = T)
+                                            ))
+X_PE <- PE_species <- as.matrix(subset(PE_excel, select = -c(ID, group, gender_group)))
+X_PE <- X_PE[, which(colMeans(!is.na(X_PE)) > 0.7)]
+X_PE <- as_tibble(X_PE)
+# Replace with minimum value in range of DF
+selected_columns <- c(1:(ncol(X_PE)))
+X_PE[selected_columns] <- lapply(X_PE[selected_columns], 
+                                  function(x) 
+                                    replace(x,is.na(x), min(x, na.rm = T)
+                                            ))
+X_PI <- PI_species <- as.matrix(subset(PI_excel, select = -c(ID, group, gender_group)))
+X_PI <- X_PI[, which(colMeans(!is.na(X_PI)) > 0.7)]
+X_PI <- as_tibble(X_PI)
+# Replace with minimum value in range of DF
+selected_columns <- c(1:(ncol(X_PI)))
+X_PI[selected_columns] <- lapply(X_PI[selected_columns], 
+                                  function(x) 
+                                    replace(x,is.na(x), min(x, na.rm = T)
+                                            ))
+X_SM <- SM_species <- as.matrix(subset(SM_excel, select = -c(ID, group, gender_group)))
+X_SM <- X_SM[, which(colMeans(!is.na(X_SM)) > 0.7)]
+X_SM <- as_tibble(X_SM)
+# Replace with minimum value in range of DF
+selected_columns <- c(1:(ncol(X_SM)))
+X_SM[selected_columns] <- lapply(X_SM[selected_columns], 
+                                  function(x) 
+                                    replace(x,is.na(x), min(x, na.rm = T)
+                                            ))
+X_TAG <- TAG_species <- as.matrix(subset(TAG_excel, select = -c(ID, group, gender_group)))
+X_TAG <- X_TAG[, which(colMeans(!is.na(X_TAG)) > 0.7)]
+X_TAG <- as_tibble(X_TAG)
+# Replace with minimum value in range of DF
+selected_columns <- c(1:(ncol(X_TAG)))
+X_TAG[selected_columns] <- lapply(X_TAG[selected_columns], 
+                                  function(x) 
+                                    replace(x,is.na(x), min(x, na.rm = T)
+                                            ))
+```
+# Normalizing by Median
+```{r}
+X_CE <- as.matrix(X_CE)
+# X_CE <- medianNormalization(X_CE, noLogTransform = TRUE)
+X_CER <- as.matrix(X_CER)
+X_CER <- medianNormalization(X_CER, noLogTransform = TRUE)
+X_DAG <- as.matrix(X_DAG)
+X_DAG <- medianNormalization(X_DAG, noLogTransform = TRUE)
+X_DCER <- as.matrix(X_DCER)
+X_DCER <- medianNormalization(X_DCER, noLogTransform = TRUE)
+X_FFA <- as.matrix(X_FFA)
+X_FFA <- medianNormalization(X_FFA, noLogTransform = TRUE)
+X_HCER <- as.matrix(X_HCER)
+X_HCER <- medianNormalization(X_HCER, noLogTransform = TRUE)
+X_LCER <- as.matrix(X_LCER)
+X_LCER <- medianNormalization(X_LCER, noLogTransform = TRUE)
+X_LPC <- as.matrix(X_LPC)
+X_LPC <- medianNormalization(X_LPC, noLogTransform = TRUE)
+X_LPE <- as.matrix(X_LPE)
+X_LPE <- medianNormalization(X_LPE, noLogTransform = TRUE)
+X_MAG <- as.matrix(X_MAG)
+X_MAG <- medianNormalization(X_MAG, noLogTransform = TRUE)
+X_PC <- as.matrix(X_PC)
+# X_PC <- medianNormalization(X_PC, noLogTransform = TRUE)
+X_PE <- as.matrix(X_PE)
+X_PE <- medianNormalization(X_PE, noLogTransform = TRUE)
+X_PI <- as.matrix(X_PI)
+X_PI <- medianNormalization(X_PI, noLogTransform = TRUE)
+X_SM <- as.matrix(X_SM)
+X_SM <- medianNormalization(X_SM, noLogTransform = TRUE)
+X_TAG <- as.matrix(X_TAG)
+# X_TAG <- medianNormalization(X_TAG, noLogTransform = TRUE)
+```
+
+# Initial PLS-DA
+```{r}
+CE.plsda <- plsda(X_CE, Y, ncomp = 10)
+CER.plsda <- plsda(X_CER, Y, ncomp = 10)
+DAG.plsda <- plsda(X_DAG, Y, ncomp = 10)
+DCER.plsda <- plsda(X_DCER, Y, ncomp = 10)
+FFA.plsda <- plsda(X_FFA, Y, ncomp = 10)
+HCER.plsda <- plsda(X_HCER, Y, ncomp = 10)
+LCER.plsda <- plsda(X_LCER, Y, ncomp = 10)
+LPC.plsda <- plsda(X_LPC, Y, ncomp = 10)
+LPE.plsda <- plsda(X_LPE, Y, ncomp = 10)
+MAG.plsda <- plsda(X_MAG, Y, ncomp = 10)
+PC.plsda <- plsda(X_PC, Y, ncomp = 10)
+PE.plsda <- plsda(X_PE, Y, ncomp = 10)
+PI.plsda <- plsda(X_PI, Y, ncomp = 10)
+SM.plsda <- plsda(X_SM, Y, ncomp = 10)
+TAG.plsda <- plsda(X_TAG, Y, ncomp = 10)
+```
+# VIP plots
+```{r}
+# CE.plsda.vip <- vip(CE.plsda)
+# CER.plsda.vip <- vip(CER.plsda)
+# DAG.plsda.vip <- vip(DAG.plsda)
+# DCER.plsda.vip <- vip(DCER.plsda)
+# FFA.plsda.vip <- vip(FFA.plsda.vip)
+# HCER.plsda.vip <- vip(HCER.plsda)
+# LCER.plsda.vip <- vip(LCER.plsda)
+LPC.plsda.vip <- vip(LPC.plsda)
+LPE.plsda.vip <- vip(LPE.plsda)
+# MAG.plsda.vip <- vip(MAG.plsda)
+# PC.plsda.vip <- vip(PC.plsda)
+PE.plsda.vip <- vip(PE.plsda)
+# PI.plsda.vip <- vip(PI.plsda)
+# SM.plsda.vip <- vip(SM.plsda)
+# TAG.plsda.vip <- vip(TAG.plsda)
+```
+# melting
+```{r}
+LPC.vip.melt <- melt(LPC.plsda.vip)
+LPC.vip.melt <- LPC.vip.melt %>% filter(Var2 == "comp1")
+LPE.vip.melt <- melt(LPE.plsda.vip)
+LPE.vip.melt <- LPE.vip.melt %>% filter(Var2 == "comp1")
+PE.vip.melt <- melt(PE.plsda.vip)
+PE.vip.melt <- PE.vip.melt %>% filter(Var2 == "comp1")
+```
+# Plot
+```{r}
+## LPC
+ggplot(LPC.vip.melt, aes(x=reorder(Var1, value), y = value)) + 
+  geom_point() +
+  geom_segment(aes(x=Var1,xend=Var1,y=0,yend=value)) +
+  ylab("Variable Importance") +
+  xlab("Species") +
+  coord_flip()
+```
+```{r}
+## LPE
+ggplot(LPE.vip.melt, aes(x=reorder(Var1, value), y = value)) + 
+  geom_point() +
+  geom_segment(aes(x=Var1,xend=Var1,y=0,yend=value)) +
+  ylab("Variable Importance") +
+  xlab("Species") +
+  coord_flip()
+```
+```{r}
+## PE
+ggplot(PE.vip.melt, aes(x=reorder(Var1, value), y = value)) + 
+  geom_point() +
+  geom_segment(aes(x=Var1,xend=Var1,y=0,yend=value)) +
+  ylab("Variable Importance") +
+  xlab("Species") +
+  coord_flip()
+```
+# Heatmaps
+## cleaning data
+```{r}
+# LPC
+LPC_hm <- LPC_species <- as.matrix(subset(LPC_excel, select = -c(ID, gender_group)))
+LPC_hm <- LPC_hm[, which(colMeans(!is.na(LPC_hm)) > 0.7)]
+LPC_hm <- as_tibble(LPC_hm)
+# Replace with minimum value in range of DF
+selected_columns <- c(1:(ncol(LPC_hm)))
+LPC_hm[selected_columns] <- lapply(LPC_hm[selected_columns], 
+                                  function(x) 
+                                    replace(x,is.na(x), min(x, na.rm = T)
+                                            ))
+# LPE
+LPE_hm <- LPE_species <- as.matrix(subset(LPE_excel, select = -c(ID, gender_group)))
+LPE_hm <- LPE_hm[, which(colMeans(!is.na(LPE_hm)) > 0.7)]
+LPE_hm <- as_tibble(LPE_hm)
+# Replace with minimum value in range of DF
+selected_columns <- c(1:(ncol(LPE_hm)))
+LPE_hm[selected_columns] <- lapply(LPE_hm[selected_columns], 
+                                  function(x) 
+                                    replace(x,is.na(x), min(x, na.rm = T)
+                                            ))
+# PE
+PE_hm <- PE_species <- as.matrix(subset(PE_excel, select = -c(ID, gender_group)))
+PE_hm <- PE_hm[, which(colMeans(!is.na(PE_hm)) > 0.7)]
+PE_hm <- as_tibble(PE_hm)
+# Replace with minimum value in range of DF
+selected_columns <- c(1:(ncol(PE_hm)))
+PE_hm[selected_columns] <- lapply(PE_hm[selected_columns], 
+                                  function(x) 
+                                    replace(x,is.na(x), min(x, na.rm = T)
+                                            ))
+```
+## subsetting based on group
+```{r}
+LPC_hm_bl <- subset(LPC_hm, group == "BL")
+LPC_hm_ai <- subset(LPC_hm, group == "AI")
+LPE_hm_bl <- subset(LPE_hm, group == "BL")
+LPE_hm_ai <- subset(LPE_hm, group == "AI")
+PE_hm_bl <- subset(PE_hm, group == "BL")
+PE_hm_ai <- subset(PE_hm, group == "AI")
+```
+## removing group ID
+```{r}
+LPC_hm_bl <- subset(LPC_hm_bl, select = -(group))
+LPC_hm_ai <- subset(LPC_hm_ai, select = -(group))
+LPE_hm_bl <- subset(LPE_hm_bl, select = -(group))
+LPE_hm_ai <- subset(LPE_hm_ai, select = -(group))
+PE_hm_bl <- subset(PE_hm_bl, select = -(group))
+PE_hm_ai <- subset(PE_hm_ai, select = -(group))
+```
+## formatting data
+```{r}
+LPC_hm_bl <- LPC_hm_bl %>% mutate_if(is.character, as.numeric)
+LPC_hm_ai <- LPC_hm_ai %>% mutate_if(is.character, as.numeric)
+LPE_hm_bl <- LPE_hm_bl %>% mutate_if(is.character, as.numeric)
+LPE_hm_ai <- LPE_hm_ai %>% mutate_if(is.character, as.numeric)
+PE_hm_bl <- PE_hm_bl %>% mutate_if(is.character, as.numeric)
+PE_hm_ai <- PE_hm_ai %>% mutate_if(is.character, as.numeric)
+```
+## more formatting
+```{r}
+LPC_hm_bl <- as.data.frame(LPC_hm_bl)
+LPC_hm_ai <- as.data.frame(LPC_hm_ai)
+LPE_hm_bl <- as.data.frame(LPE_hm_bl)
+LPE_hm_ai <- as.data.frame(LPE_hm_ai)
+PE_hm_bl <- as.data.frame(PE_hm_bl)
+PE_hm_ai <- as.data.frame(PE_hm_ai)
+```
+
+```{r}
+LPC_bl_means <- colMeans(LPC_hm_bl)
+LPC_bl_means <- as.vector(LPC_bl_means)
+LPC_names <- colnames(LPC_hm_bl)
+LPC_ai_means <- colMeans(LPC_hm_ai)
+LPC_ai_means <- as.vector(LPC_ai_means)
+LPE_bl_means <- colMeans(LPE_hm_bl)
+LPE_bl_means <- as.vector(LPE_bl_means)
+LPE_ai_means <- colMeans(LPE_hm_ai)
+LPE_ai_means <- as.vector(LPE_ai_means)
+LPE_names <- colnames(LPE_hm_bl)
+PE_bl_means <- colMeans(PE_hm_bl)
+PE_bl_means <- as.vector(PE_bl_means)
+PE_ai_means <- colMeans(PE_hm_ai)
+PE_ai_means <- as.vector(PE_ai_means)
+PE_names <- colnames(PE_hm_bl)
+```
+```{r}
+LPC_hm_clean <- as.data.frame(LPC_bl_means, row.names = LPC_bl_names)
+LPC_hm_clean$AI <- LPC_ai_means
+colnames(LPC_hm_clean)[colnames(LPC_hm_clean) == "LPC_bl_means"] = "BL"
+LPC_hm_clean <- as.matrix(LPC_hm_clean)
+LPC_hm_clean
+```
+```{r}
+LPE_hm_clean <- as.data.frame(LPE_bl_means, row.names = LPE_names)
+LPE_hm_clean$AI <- LPE_ai_means
+colnames(LPE_hm_clean)[colnames(LPE_hm_clean) == "LPE_bl_means"] = "BL"
+LPE_hm_clean <- as.matrix(LPE_hm_clean)
+LPE_hm_clean
+```
+```{r}
+PE_hm_clean <- as.data.frame(PE_bl_means, row.names = PE_names)
+PE_hm_clean$AI <- PE_ai_means
+colnames(PE_hm_clean)[colnames(PE_hm_clean) == "PE_bl_means"] = "BL"
+PE_hm_clean <- as.matrix(PE_hm_clean)
+PE_hm_clean
+```
+# Heatmap
+```{r}
+LPC_hm <- melt(LPC_hm_clean)
+colnames(LPC_hm) <- c("Species", "Group", "Value")
+LPE_hm <- melt(LPE_hm_clean)
+colnames(LPE_hm) <- c("Species", "Group", "Value")
+PE_hm <- melt(PE_hm_clean)
+colnames(PE_hm) <- c("Species", "Group", "Value")
+```
+```{r}
+ggplot(LPC_hm, aes(x = Group, y = Species, fill = Value)) +
+  geom_tile()
+```
+```{r}
+ggplot(LPE_hm, aes(x = Group, y = Species, fill = Value)) +
+  geom_tile()
+```
+```{r}
+ggplot(PE_hm, aes(x = Group, y = Species, fill = Value)) +
+  geom_tile()
+```
+
